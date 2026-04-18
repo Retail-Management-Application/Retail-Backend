@@ -2,9 +2,11 @@
 
 public static class PasswordHelper
 {
-    public static string HashPassword(string password) =>
-        BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
+    private const int WorkFactor = 12;
 
-    public static bool VerifyPassword(string password, string hash) =>
-        BCrypt.Net.BCrypt.Verify(password, hash);
+    public static string HashPassword(string plainText)
+        => BCrypt.Net.BCrypt.HashPassword(plainText, WorkFactor);
+
+    public static bool VerifyPassword(string plainText, string hash)
+        => BCrypt.Net.BCrypt.Verify(plainText, hash);
 }

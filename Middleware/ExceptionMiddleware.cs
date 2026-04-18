@@ -9,8 +9,7 @@ public class ExceptionMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionMiddleware> _logger;
 
-    public ExceptionMiddleware(RequestDelegate next,
-                               ILogger<ExceptionMiddleware> logger)
+    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -29,23 +28,27 @@ public class ExceptionMiddleware
         }
     }
 
-    private static Task HandleExceptionAsync(HttpContext context, Exception ex)
+    private static async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
-        var statusCode = ex switch
+        context.Response.ContentType = "application/json";
+
+        var (statusCode, message) = ex switch
         {
-            KeyNotFoundException => HttpStatusCode.NotFound,
-            UnauthorizedAccessException => HttpStatusCode.Unauthorized,
-            ArgumentException => HttpStatusCode.BadRequest,
-            _ => HttpStatusCode.InternalServerError
+            KeyNotFoundException => (HttpStatusCode.NotFound, ex.Message),
+            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, ex.Message),
+            InvalidOperationException => (HttpStatusCode.BadRequest, ex.Message),
+            ArgumentException => (HttpStatusCode.BadRequest, ex.Message),
+            _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
 
-        context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
 
-        var response = ApiResponse<object>.Fail(ex.Message);
-        var json = JsonSerializer.Serialize(response,
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        var response = ApiResponse<object>.Fail(message);
+        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
 
-        return context.Response.WriteAsync(json);
+        await context.Response.WriteAsync(json);
     }
 }

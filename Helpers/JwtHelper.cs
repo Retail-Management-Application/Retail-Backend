@@ -1,37 +1,75 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using Microsoft.IdentityModel.Tokens;
+using RetailOrdering.API.Models;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.IdentityModel.Tokens;
-using RetailOrdering.API.Models;
 
-namespace RetailOrdering.API.Helpers;
-
-public static class JwtHelper
+namespace RetailOrdering.API.Helpers
 {
-    public static string GenerateToken(User user, IConfiguration config)
+    public class JwtHelper
     {
-        var jwtSettings = config.GetSection("JwtSettings");
-        var key = new SymmetricSecurityKey(
-                              Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!));
+        private readonly IConfiguration _config;
 
-        var claims = new[]
+        public JwtHelper(IConfiguration config)
         {
-            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new Claim(ClaimTypes.Email,          user.Email),
-            new Claim(ClaimTypes.Name,           user.FullName),
-            new Claim(ClaimTypes.Role,           user.Role.ToString())
-        };
+            _config = config;
+        }
 
-        var token = new JwtSecurityToken(
-            issuer: jwtSettings["Issuer"],
-            audience: jwtSettings["Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(
-                          double.Parse(jwtSettings["ExpiryInHours"]!)),
-            signingCredentials: new SigningCredentials(
-                key, SecurityAlgorithms.HmacSha256)
-        );
+        /// <summary>Generates a signed JWT and returns (token, expiresAt).</summary>
+        public (string token, DateTime expiresAt) GenerateToken(User user)
+        {
+            var jwtSection = _config.GetSection("JwtSettings");
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSection["SecretKey"]!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+            var expiresAt = DateTime.UtcNow.AddHours(
+                double.Parse(jwtSection["ExpiryInHours"] ?? "24"));
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.FullName),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: jwtSection["Issuer"],
+                audience: jwtSection["Audience"],
+                claims: claims,
+                expires: expiresAt,
+                signingCredentials: creds);
+
+            return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+        }
+
+        public ClaimsPrincipal? ValidateToken(string token)
+        {
+            var jwtSection = _config.GetSection("JwtSettings");
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSection["SecretKey"]!));
+
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                return handler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = key,
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtSection["Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = jwtSection["Audience"],
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                }, out _);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 }
