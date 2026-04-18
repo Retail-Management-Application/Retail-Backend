@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetailOrdering.API.Common;
 using RetailOrdering.API.DTOs.Auth;
@@ -6,8 +6,9 @@ using RetailOrdering.API.Repositories.Interfaces;
 
 namespace RetailOrdering.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/users")]
+    [Authorize(Roles = "Admin")]
     public class UserController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
@@ -24,7 +25,7 @@ namespace RetailOrdering.API.Controllers
             var users = await _userRepository.GetAllAsync();
             var dtos = users.Select(u => new UserProfileDto
             {
-                Id = u.Id,
+                Id = u.UserId,
                 FullName = u.FullName,
                 Email = u.Email,
                 PhoneNumber = u.PhoneNumber,
@@ -32,7 +33,7 @@ namespace RetailOrdering.API.Controllers
                 Role = u.Role.ToString(),
                 CreatedAt = u.CreatedAt
             });
-            return Ok(ApiResponse<IEnumerable<UserProfileDto>>.Success(dtos));
+            return Ok(ApiResponse<IEnumerable<UserProfileDto>>.Ok(dtos));
         }
 
         /// <summary>GET /api/users/{id} — Admin: get user by id</summary>
@@ -41,7 +42,7 @@ namespace RetailOrdering.API.Controllers
         {
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
-                return NotFound(ApiResponse<object>.Fail("User not found."));
+                return NotFound(ApiResponse<object>.Error("User not found."));
 
             var dto = new UserProfileDto
             {
@@ -53,7 +54,7 @@ namespace RetailOrdering.API.Controllers
                 Role = user.Role.ToString(),
                 CreatedAt = user.CreatedAt
             };
-            return Ok(ApiResponse<UserProfileDto>.Success(dto));
+            return Ok(ApiResponse<UserProfileDto>.Ok(dto));
         }
 
         /// <summary>DELETE /api/users/{id} — Admin: delete user</summary>
@@ -62,9 +63,9 @@ namespace RetailOrdering.API.Controllers
         {
             var deleted = await _userRepository.DeleteAsync(id);
             if (!deleted)
-                return NotFound(ApiResponse<object>.Fail("User not found."));
+                return NotFound(ApiResponse<object>.Error("User not found."));
 
-            return Ok(ApiResponse<object>.Success(null, "User deleted successfully."));
+            return Ok(ApiResponse<object>.Ok(null, "User deleted successfully."));
         }
     }
 }

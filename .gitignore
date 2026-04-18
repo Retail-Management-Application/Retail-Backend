@@ -27,6 +27,7 @@ appsettings.Development.json
 WeatherForecast.cs
 Controllers/WeatherForecastController.cs
 
+
 # OS files
 .DS_Store
 Thumbs.db

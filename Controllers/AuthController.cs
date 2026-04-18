@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RetailOrdering.API.Common;
 using RetailOrdering.API.DTOs.Auth;
@@ -8,8 +7,8 @@ using System.Security.Claims;
 
 namespace RetailOrdering.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -25,10 +24,10 @@ namespace RetailOrdering.API.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ApiResponse<object>.Fail("Validation failed.", ModelState));
+                return BadRequest(ApiResponse<object>.Error("Validation failed.", ModelState));
 
             var result = await _authService.RegisterAsync(dto);
-            return Ok(ApiResponse<AuthResponseDto>.Success(result, "Registration successful."));
+            return Ok(ApiResponse<AuthResponseDto>.Ok(result, "Registration successful."));
         }
 
         /// <summary>POST /api/auth/login — Login and receive JWT</summary>
@@ -37,10 +36,10 @@ namespace RetailOrdering.API.Controllers
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ApiResponse<object>.Fail("Validation failed.", ModelState));
+                return BadRequest(ApiResponse<object>.Error("Validation failed.", ModelState));
 
             var result = await _authService.LoginAsync(dto);
-            return Ok(ApiResponse<AuthResponseDto>.Success(result, "Login successful."));
+            return Ok(ApiResponse<AuthResponseDto>.Ok(result, "Login successful."));
         }
 
         /// <summary>GET /api/auth/profile — Get current user's profile</summary>
@@ -50,7 +49,7 @@ namespace RetailOrdering.API.Controllers
         {
             var userId = GetCurrentUserId();
             var result = await _authService.GetProfileAsync(userId);
-            return Ok(ApiResponse<UserProfileDto>.Success(result));
+            return Ok(ApiResponse<UserProfileDto>.Ok(result));
         }
 
         /// <summary>PUT /api/auth/profile — Update current user's profile</summary>
@@ -60,7 +59,7 @@ namespace RetailOrdering.API.Controllers
         {
             var userId = GetCurrentUserId();
             var result = await _authService.UpdateProfileAsync(userId, dto);
-            return Ok(ApiResponse<UserProfileDto>.Success(result, "Profile updated successfully."));
+            return Ok(ApiResponse<UserProfileDto>.Ok(result, "Profile updated successfully."));
         }
 
         // ── Private helper ────────────────────────────────────────────────

@@ -1,7 +1,10 @@
-﻿namespace RetailOrdering.API.Models;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace RetailOrdering.API.Models;
 
 public class LoyaltyAccount
 {
+    [Key]
     public int LoyaltyId { get; set; }
     public int UserId { get; set; }
     public int Points { get; set; } = 0;
